@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>次の一手（仮）</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --text:#1d2330; --muted:#667085; --line:#dfe3e8;
+  --accent:#4a90d9; --accent-soft:rgba(74,144,217,.18); --warn-bg:#fff6e0; --warn:#8a5a00;
+  --ok:#15803d; --danger:#b42318;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171c; --card:#1e2229; --text:#e7eaf0; --muted:#9aa3b2; --line:#323844;
+    --accent:#7eb3ee; --accent-soft:rgba(126,179,238,.22); --warn-bg:#3a2e12; --warn:#f5c862;
+    --ok:#4ade80; --danger:#ff8a7a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171c; --card:#1e2229; --text:#e7eaf0; --muted:#9aa3b2; --line:#323844;
+  --accent:#7eb3ee; --accent-soft:rgba(126,179,238,.22); --warn-bg:#3a2e12; --warn:#f5c862;
+  --ok:#4ade80; --danger:#ff8a7a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;line-height:1.6}
+main{max-width:720px;margin:0 auto;padding:12px 16px 48px}
+h1{font-size:1.25rem;margin:8px 0 10px}
+h2{font-size:1.3rem;margin:2px 0}
+p{margin:6px 0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px;position:sticky;top:0;background:var(--bg);z-index:5;padding-top:4px}
+.tabs button{border:0;background:none;color:var(--muted);font:inherit;padding:8px 14px;border-bottom:3px solid transparent;cursor:pointer}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.cap{color:var(--muted);font-size:.9rem}
+.warn{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.92rem}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:700;margin-top:8px}
+:root[data-theme="dark"] .btn{color:#0b0d10}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{color:#0b0d10}}
+.btn2{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 14px;margin-top:8px}
+.btn3{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 10px;font-size:.85rem}
+input[type=text],input[type=time],input[type=date],input:not([type]),textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);width:100%}
+.fld{display:block;font-size:.9rem;color:var(--muted);margin:6px 0}
+.fld input{margin-top:3px;color:var(--text)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.row > .grow{flex:1}
+.chk{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer}
+.chk input{width:18px;height:18px}
+.chk.done{color:var(--muted);text-decoration:line-through}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.opts label{border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.92rem}
+.opts input{display:none}
+.opts label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);font-weight:700}
+.prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0 4px}
+.prog i{display:block;height:100%;background:var(--accent);transition:width .3s}
+@keyframes qin{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.qbox{animation:qin .4s ease-out}
+table.mc{width:100%;text-align:center;border-collapse:separate;border-spacing:3px}
+table.mc th{font-weight:400;font-size:13px;color:var(--muted)}
+table.mc td{border-radius:8px;padding:4px 0;line-height:1.3;cursor:pointer}
+table.mc td:empty{cursor:default}
+table.mc td.sel{background:var(--accent-soft)}
+table.mc td.td{font-weight:700}
+table.mc small{color:var(--accent);font-size:10px}
+table.tt{width:100%;border-collapse:collapse}
+table.tt th,table.tt td{border:1px solid var(--line);padding:2px;text-align:center}
+table.tt th{font-weight:700;font-size:.9rem;color:var(--muted);padding:6px 4px}
+table.tt input{border:0;background:transparent;text-align:center;padding:8px 2px;border-radius:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--muted);padding:4px 12px}
+.seg button.on{background:var(--accent-soft);color:var(--text);font-weight:700}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:.92rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:20;max-width:90vw}
+.toast.on{opacity:1}
+.err{color:var(--danger);font-size:.9rem}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<main>
+  <h1>次の一手（仮）</h1>
+  <nav class="tabs" id="tabs">
+    <button data-tab="home" class="on">ホーム</button>
+    <button data-tab="cal">カレンダー</button>
+    <button data-tab="tt">時間割</button>
+  </nav>
+  <section id="home"></section>
+  <section id="cal" hidden></section>
+  <section id="tt" hidden></section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== データ ===================== */
+// データはこのブラウザ（localStorage）にだけ保存する。形式は Python 版の data.json と同じ。
+const KEY = 'timeback_v1';
+const DAYS = ['月','火','水','木','金'], WD = [...DAYS, '土', '日'];
+const DEFAULT = () => ({
+  tt: Array.from({ length: 6 }, () => Array(5).fill('')),   // 6限 × 月〜金
+  it: Array(5).fill(''),                                     // 曜日別の持ち物
+  base: 'スマホ,PC,バッグ',                                   // 毎日の持ち物
+  pl: {},                                                     // 日付 -> 予定のリスト
+  ck: {},                                                     // 日付 -> 持ち物チェック
+  lg: [],                                                     // 完了ログ
+  td: [],                                                     // 時間なしのToDo
+  qa: {},                                                     // 生活リズムの回答
+  qdone: false
+});
+function load(){
+  const d = DEFAULT();
+  try{ const raw = localStorage.getItem(KEY); if(raw) Object.assign(d, JSON.parse(raw)); }catch(e){}
+  return d;
+}
+let S = load();
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast('保存できませんでした（ブラウザの設定を確認してください）'); }
+}
+
+/* ===================== 小さな道具 ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const split = s => String(s || '').split(/[,、\n]/).map(x => x.trim()).filter(Boolean);
+const mins = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+const hm = m => pad(Math.floor(m / 60)) + ':' + pad(m % 60);
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fromIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const wday = d => (d.getDay() + 6) % 7;          // 月=0 … 日=6（Python の weekday と同じ）
+const hrs = (bed, wake) => ((((mins(wake) - mins(bed)) % 1440) + 1440) % 1440) / 60;
+const newId = () => Date.now();
+function nowInfo(){
+  const n = new Date();
+  const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  return { n, today, tomorrow, mNow: n.getHours() * 60 + n.getMinutes() };
+}
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('on'), 2400); }
+function itemsFor(d){ const w = wday(d); return split(S.base).concat(w < 5 ? split(S.it[w]) : []); }
+
+/* ===================== 空き枠の計算（Python 版と同じルール） ===================== */
+function freeSlots(d){
+  const a = S.qa, wd = wday(d) < 5, p = wd ? 'wd' : 'we';
+  const wake = mins(a[p + '_wake'] || (wd ? '06:30' : '08:00'));
+  const bed = mins(a[p + '_bed'] || '23:30');
+  const end = bed > wake ? bed : 1440;               // 日付をまたぐ就寝は24:00で打ち切る
+  const busy = [];
+  if(wd){
+    busy.push([wake, mins(a.home || '17:30')]);      // 起床〜帰宅（朝の準備＋登校＋学校）
+    if(a.juku && (a.juku_days || []).includes(WD[wday(d)]))
+      busy.push([mins(a.juku_s || '18:00'), mins(a.juku_home || '21:30')]);
+  }
+  for(const k of ['dinner', 'bath']){
+    const s = mins(a[k] || (k === 'dinner' ? '19:00' : '21:30'));
+    busy.push([s, s + 30]);
+  }
+  for(const q of (S.pl[iso(d)] || [])) busy.push([mins(q.s), mins(q.e)]);
+  busy.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const out = []; let cur = wake;
+  for(let [s, e] of busy){
+    s = Math.min(s, end);
+    if(s - cur >= 15) out.push([cur, s]);
+    cur = Math.max(cur, e);
+  }
+  if(end - cur >= 15) out.push([cur, end]);
+  return out;
+}
+// 固定ルール：未予定のやることを、空き枠の先頭から30分ずつ割り当てる
+function propose(d, today, mNow){
+  const sched = new Set((S.pl[iso(d)] || []).map(q => q.t));
+  const todo = S.td.filter(t => !t.d && !sched.has(t.id));
+  const nowM = iso(d) === iso(today) ? mNow : 0;
+  const slots = freeSlots(d).map(([s, e]) => [Math.max(s, nowM), e]).filter(([s, e]) => e - s >= 20);
+  const prop = [];
+  for(let i = 0; i < Math.min(todo.length, slots.length); i++){
+    const [s, e] = slots[i]; prop.push([s, Math.min(e, s + 30), todo[i]]);
+  }
+  return { slots, prop };
+}
+
+/* ===================== 生活リズムの質問（1画面1テーマ） ===================== */
+const AFTER = ['休憩（スマホ・動画）', '食事', '入浴', '勉強', '仮眠', 'その他'];
+const MORN = ['朝食', '身支度', 'スマホ', '勉強', '通学の準備', 'ゆっくりする'];
+const STUCK = ['朝', '帰宅直後', '夕食後', '寝る前', '特にない'];
+const ti = (id, label, val) => `<label class="fld">${label}<input type="time" id="${id}" value="${esc(val)}"></label>`;
+const v = id => $('#' + id).value;
+const radios = (name, opts, cur) => `<div class="opts">${opts.map(o => `<label><input type="radio" name="${name}" value="${esc(o)}" ${o === cur ? 'checked' : ''}>${esc(o)}</label>`).join('')}</div>`;
+const checks = (name, opts, cur) => `<div class="opts">${opts.map(o => `<label><input type="checkbox" name="${name}" value="${esc(o)}" ${(cur || []).includes(o) ? 'checked' : ''}>${esc(o)}</label>`).join('')}</div>`;
+const rv = name => { const x = document.querySelector(`input[name="${name}"]:checked`); return x ? x.value : ''; };
+const cv = name => $$(`input[name="${name}"]:checked`).map(x => x.value);
+const sleepQ = p => ({
+  r: a => `<div class="two">${ti('qb', '就寝', a[p + '_bed'] || '23:30')}${ti('qw', '起床', a[p + '_wake'] || (p === 'wd' ? '06:30' : '08:00'))}</div>`,
+  c: () => ({ [p + '_bed']: v('qb'), [p + '_wake']: v('qw') })
+});
+const QS = [
+  { t: '平日の睡眠', ...sleepQ('wd') },
+  { t: '休日の睡眠', ...sleepQ('we') },
+  { t: '登校と帰宅',
+    r: a => `<div class="two">${ti('lv', '家を出る時刻', a.leave || '07:30')}${ti('hmq', '家に着く時刻（塾のない日）', a.home || '17:30')}</div>`,
+    c: () => ({ leave: v('lv'), home: v('hmq') }) },
+  { t: '塾',
+    r: a => `<p class="fld">塾に通っていますか</p>${radios('jk', ['はい', 'いいえ'], a.juku ? 'はい' : 'いいえ')}` +
+      (a.juku ? `<p class="fld">曜日</p>${checks('jd', WD, a.juku_days)}<div class="three">${ti('js', '開始', a.juku_s || '18:00')}${ti('je', '終了', a.juku_e || '21:00')}${ti('jh', '家に着く', a.juku_home || '21:30')}</div>` : ''),
+    c: () => { const yes = rv('jk') === 'はい'; const o = { juku: yes };
+      if(yes && $('#js')){ o.juku_days = cv('jd'); o.juku_s = v('js'); o.juku_e = v('je'); o.juku_home = v('jh'); }
+      return o; } },
+  { t: '帰宅後', r: a => `<p class="fld">家に着いて、最初にすること</p>${radios('af', AFTER, a.after || AFTER[0])}`, c: () => ({ after: rv('af') }) },
+  { t: '朝', r: a => `<p class="fld">朝にすること（複数可）</p>${checks('mo', MORN, a.morning)}`, c: () => ({ morning: cv('mo') }) },
+  { t: '夕食と入浴',
+    r: a => `<div class="two">${ti('dn', '夕食を始める時刻', a.dinner || '19:00')}${ti('ba', '入浴を始める時刻', a.bath || '21:30')}</div>`,
+    c: () => ({ dinner: v('dn'), bath: v('ba') }) },
+  { t: 'つまずきやすい時間', r: a => `<p class="fld">「次、何するんだっけ」となりやすい時間帯</p>${radios('sk', STUCK, a.stuck || STUCK[0])}`, c: () => ({ stuck: rv('sk') }) },
+  { t: '勉強時間',
+    r: a => { const g = a.goal_h ?? 2; return `<label class="fld">平日に勉強にあてたい時間：<b id="glv">${Number(g).toFixed(1)}</b> 時間<input type="range" id="gl" min="0" max="6" step="0.5" value="${g}" style="width:100%"></label>`; },
+    c: () => ({ goal_h: Number(v('gl')) }) }
+];
+const N = QS.length;
+let qi = null, draft = null;   // qi：表示中の質問番号（null なら質問を閉じている）
+
+function questionHTML(){
+  const q = QS[qi], left = N - qi - 1;
+  return `<div class="card qbox" id="qbox">
+    <div class="cap">${qi + 1}/${N}　${left ? `あと${left}問です！` : '最後の質問です！'}</div>
+    <div class="prog"><i style="width:${(qi / N) * 100}%"></i></div>
+    <h2>${q.t}</h2><div id="qbody">${q.r(draft)}</div>
+    <div class="two" style="margin-top:8px">
+      <div>${qi > 0 ? '<button class="btn2" id="qBack">戻る</button>' : ''}</div>
+      <div style="text-align:right"><button class="btn" id="qNext">${left ? '次へ' : '完了'}</button></div>
+    </div></div>`;
+}
+function bindQuestion(){
+  const q = QS[qi];
+  // 塾の「はい／いいえ」を切り替えたら、曜日と時刻の欄を出し入れする
+  $$('input[name="jk"]').forEach(r => r.addEventListener('change', () => { Object.assign(draft, q.c()); draft.juku = rv('jk') === 'はい'; $('#qbody').innerHTML = q.r(draft); bindQuestion(); }));
+  if($('#gl')) $('#gl').addEventListener('input', () => { $('#glv').textContent = Number(v('gl')).toFixed(1); });
+  if($('#qBack')) $('#qBack').onclick = () => { Object.assign(S.qa, q.c()); save(); qi--; draft = { ...S.qa }; renderHome(); };
+  $('#qNext').onclick = () => {
+    Object.assign(S.qa, q.c());
+    if(qi < N - 1){ qi++; draft = { ...S.qa }; }
+    else { S.qdone = true; qi = null; toast('回答ありがとう！空き時間を計算しました。'); }
+    save(); renderHome();
+  };
+}
+
+/* ===================== ホーム ===================== */
+let itemsPick = null;   // 持ち物の対象（今日／明日）
+function renderHome(){
+  const { n, today, tomorrow, mNow } = nowInfo();
+  const el = $('#home');
+  if(qi !== null){ el.innerHTML = questionHTML(); bindQuestion(); return; }
+  const a = S.qa;
+  let h = '<div class="card"><b>生活リズム</b>';
+  if(!S.qdone) h += `<p class="cap">${N}問・約1分。答えた内容から、空き時間を自動で計算します。</p>`;
+  else {
+    h += `<p class="cap">睡眠　平日 ${hrs(a.wd_bed || '23:30', a.wd_wake || '06:30').toFixed(1)}時間 / 休日 ${hrs(a.we_bed || '23:30', a.we_wake || '08:00').toFixed(1)}時間</p>`;
+    if(a.juku) h += `<p class="cap">塾　${esc((a.juku_days || []).join('・'))}　${esc(a.juku_s)}–${esc(a.juku_e)}（帰宅 ${esc(a.juku_home)}）</p>`;
+    h += `<p class="cap">つまずきやすい時間帯: ${esc(a.stuck || '')}</p>`;
+  }
+  h += `<button class="${S.qdone ? 'btn2' : 'btn'}" id="qStart">${S.qdone ? '回答を修正' : 'はじめる'}</button></div>`;
+
+  const tIso = iso(today);
+  const plans = (S.pl[tIso] || []).slice().sort((x, y) => x.s.localeCompare(y.s));
+  const tp = plans.filter(p => !p.d);
+  const cur = tp.find(p => mins(p.s) <= mNow && mNow < mins(p.e));
+  const nxt = tp.find(p => mins(p.s) > mNow);
+  const undone = S.td.filter(t => !t.d);
+
+  h += '<div class="card"><div class="cap">今</div>' + (cur
+    ? `<h2>${esc(cur.x)}</h2><div class="cap">${cur.s}–${cur.e}</div><button class="btn" id="doneCur">完了</button>`
+    : `<h2>空白</h2><div class="cap">次の一手を決めて動き出しましょう</div>${undone.length ? `<p>候補: ${esc(undone[0].x)}</p>` : ''}`) + '</div>';
+  h += '<div class="card"><div class="cap">次</div>' + (nxt
+    ? `<h2>${esc(nxt.x)}</h2><div class="cap">${nxt.s}–${nxt.e}</div>`
+    : '<div class="cap">今日の予定はこれで終わりです</div>') + '</div>';
+  if(!(S.pl[iso(tomorrow)] || []).length) h += '<div class="warn">明日の予定がまだありません。今夜のうちに決めておくと、朝の空白が減ります。</div>';
+
+  h += '<div class="card"><b>今日の空き枠</b>';
+  let prop = [];
+  if(!S.qdone) h += '<p class="cap">質問に答えると、空き枠を自動で計算します。</p>';
+  else {
+    const r = propose(today, today, mNow); prop = r.prop;
+    if(!r.slots.length) h += '<p class="cap">これから20分以上の空きはありません。</p>';
+    h += r.slots.map(([s, e]) => `<div class="cap">${hm(s)}–${hm(e)}（${e - s}分）</div>`).join('');
+    if(prop.length) h += '<p><b>割り当て案</b></p>' + prop.map(([s, e, t]) => `<div>${hm(s)}–${hm(e)}　${esc(t.x)}</div>`).join('') + '<button class="btn2" id="addProp">この案を予定に追加</button>';
+    else if(r.slots.length) h += '<p class="cap">やることを追加すると、空き枠に割り当てます。</p>';
+  }
+  h += '</div>';
+
+  h += '<div class="card"><b>やること（時間なし）</b>' +
+    S.td.slice().sort((x, y) => x.d - y.d).map(t => `<div class="row"><label class="chk ${t.d ? 'done' : ''}"><input type="checkbox" data-td="${t.id}" ${t.d ? 'checked' : ''}>${esc(t.x)}</label><button class="btn3" data-tdrm="${t.id}">削除</button></div>`).join('') +
+    '<form id="tdForm" class="row"><div class="grow"><input id="tdIn" placeholder="Legend 例題3問" aria-label="やることを追加"></div><button class="btn2" style="margin-top:0">追加</button></form></div>';
+
+  const pick = itemsPick || (n.getHours() >= 17 ? '明日' : '今日');
+  const target = pick === '明日' ? tomorrow : today, ti2 = iso(target), lst = itemsFor(target);
+  const ck = S.ck[ti2] || {};
+  h += `<div class="card"><div class="row"><b class="grow">持ち物</b><span class="seg">${['今日', '明日'].map(x => `<button data-pick="${x}" class="${x === pick ? 'on' : ''}">${x}</button>`).join('')}</span></div>` +
+    (lst.length ? lst.map(it => `<div class="row"><label class="chk ${ck[it] ? 'done' : ''}"><input type="checkbox" data-ck="${esc(it)}" ${ck[it] ? 'checked' : ''}>${esc(it)}</label></div>`).join('') : '<p class="cap">時間割タブで持ち物を登録してください。</p>') + '</div>';
+
+  el.innerHTML = h;
+
+  $('#qStart').onclick = () => { qi = 0; draft = { ...S.qa }; renderHome(); };
+  if(cur) $('#doneCur').onclick = () => {
+    cur.d = true;
+    S.td.forEach(t => { if(t.id === cur.t) t.d = true; });
+    const d = new Date();
+    S.lg.push({ ts: `${iso(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`, day: tIso, id: cur.id });
+    save(); renderHome();
+  };
+  if($('#addProp')) $('#addProp').onclick = () => {
+    const base = newId();
+    prop.forEach(([s, e, t], i) => (S.pl[tIso] = S.pl[tIso] || []).push({ id: base + i, s: hm(s), e: hm(e), x: t.x, d: false, t: t.id }));
+    save(); renderHome(); toast('予定に追加しました');
+  };
+  $$('[data-td]').forEach(c => c.onchange = () => { const t = S.td.find(t => String(t.id) === c.dataset.td); if(t){ t.d = c.checked; save(); renderHome(); } });
+  $$('[data-tdrm]').forEach(b => b.onclick = () => { S.td = S.td.filter(t => String(t.id) !== b.dataset.tdrm); save(); renderHome(); });
+  $('#tdForm').onsubmit = e => { e.preventDefault(); const x = $('#tdIn').value.trim(); if(!x) return; S.td.push({ id: newId(), x, d: false }); save(); renderHome(); $('#tdIn').focus(); };
+  $$('[data-pick]').forEach(b => b.onclick = () => { itemsPick = b.dataset.pick; renderHome(); });
+  $$('[data-ck]').forEach(c => c.onchange = () => { (S.ck[ti2] = S.ck[ti2] || {})[c.dataset.ck] = c.checked; save(); c.closest('.chk').classList.toggle('done', c.checked); });
+}
+
+/* ===================== カレンダー ===================== */
+let calSel = null;
+function monthHTML(sel, today){
+  const y = sel.getFullYear(), m = sel.getMonth();
+  const first = new Date(y, m, 1), start = new Date(y, m, 1 - wday(first));
+  let h = "<table class='mc'><tr>" + [...'月火水木金土日'].map(w => `<th>${w}</th>`).join('') + '</tr>';
+  for(let d = new Date(start); d.getMonth() === m || d < first; ){
+    h += '<tr>';
+    for(let i = 0; i < 7; i++, d.setDate(d.getDate() + 1)){
+      if(d.getMonth() !== m){ h += '<td></td>'; continue; }
+      const di = iso(d), cls = di === iso(sel) ? 'sel' : (di === iso(today) ? 'td' : '');
+      h += `<td class="${cls}" data-day="${di}">${d.getDate()}<br><small>${(S.pl[di] || []).length ? '●' : '&nbsp;'}</small></td>`;
+    }
+    h += '</tr>';
+  }
+  return h + '</table>';
+}
+function renderCal(){
+  const { today } = nowInfo();
+  const d = calSel || today, di = iso(d);
+  const plans = (S.pl[di] || []).slice().sort((x, y) => x.s.localeCompare(y.s));
+  $('#cal').innerHTML = `
+    <label class="fld">日付を選ぶ<input type="date" id="calDate" value="${di}"></label>
+    <p><b>${d.getFullYear()}年${d.getMonth() + 1}月</b></p>${monthHTML(d, today)}
+    <div class="card" style="margin-top:10px"><b>${d.getMonth() + 1}/${d.getDate()} の予定</b>
+      ${plans.length ? plans.map(p => `<div class="row"><span class="grow">${p.s}–${p.e}　${esc(p.x)}${p.d ? '　✓' : ''}</span><button class="btn3" data-rm="${p.id}">削除</button></div>`).join('') : '<p class="cap">まだありません。</p>'}
+      <form id="plForm" style="margin-top:8px">
+        <div class="two">${ti('plS', '開始', '16:30')}${ti('plE', '終了', '17:00')}</div>
+        <label class="fld">内容<input id="plX" placeholder="Legend 例題3問"></label>
+        <button class="btn2">追加</button> <span class="err" id="plErr"></span>
+      </form></div>`;
+  $('#calDate').onchange = e => { if(e.target.value){ calSel = fromIso(e.target.value); renderCal(); } };
+  $$('[data-day]').forEach(td => td.onclick = () => { calSel = fromIso(td.dataset.day); renderCal(); });
+  $$('[data-rm]').forEach(b => b.onclick = () => { S.pl[di] = (S.pl[di] || []).filter(q => String(q.id) !== b.dataset.rm); save(); renderCal(); });
+  $('#plForm').onsubmit = e => {
+    e.preventDefault();
+    const s = v('plS'), en = v('plE'), x = v('plX').trim();
+    if(!x){ $('#plErr').textContent = '内容を入力してください。'; return; }
+    if(!s || !en || s >= en){ $('#plErr').textContent = '終了は開始より後にしてください。'; return; }
+    (S.pl[di] = S.pl[di] || []).push({ id: newId(), s, e: en, x, d: false });
+    save(); renderCal();
+  };
+}
+
+/* ===================== 時間割・持ち物・データ ===================== */
+function renderTT(){
+  $('#tt').innerHTML = `
+    <div class="card"><b>時間割</b>
+      <table class="tt" style="margin-top:8px"><tr><th></th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>
+      ${S.tt.map((row, r) => `<tr><th>${r + 1}限</th>${row.map((x, c) => `<td><input data-r="${r}" data-c="${c}" value="${esc(x)}" aria-label="${DAYS[c]}曜${r + 1}限"></td>`).join('')}</tr>`).join('')}
+      </table></div>
+    <div class="card"><b>持ち物</b>
+      <label class="fld">毎日（カンマ区切り）<input id="base" value="${esc(S.base)}"></label>
+      ${DAYS.map((d, i) => `<label class="fld">${d}曜日だけ<input data-it="${i}" value="${esc(S.it[i])}" placeholder="体操服"></label>`).join('')}
+    </div>
+    <div class="card"><b>データの保存と引っ越し</b>
+      <p class="cap">データは、このブラウザの中にだけ保存されています。別の端末やブラウザで使うときや、念のための控えに、ファイルに書き出しておけます。Colab版（Python版）の data.json も読み込めます。</p>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn2" id="exp">ファイルに書き出す</button>
+        <label class="btn2" style="display:inline-block">ファイルを読み込む<input type="file" id="imp" accept=".json,application/json" hidden></label>
+        <button class="btn3" id="wipe" style="margin-left:auto">すべて消す</button>
+      </div>
+    </div>`;
+  $$('[data-r]').forEach(inp => inp.oninput = () => { S.tt[+inp.dataset.r][+inp.dataset.c] = inp.value; save(); });
+  $('#base').oninput = e => { S.base = e.target.value; save(); };
+  $$('[data-it]').forEach(inp => inp.oninput = () => { S.it[+inp.dataset.it] = inp.value; save(); });
+  $('#exp').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }));
+    a.download = `次の一手_データ_${iso(new Date())}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#imp').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const obj = JSON.parse(await f.text());
+      if(!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error();
+      if(!confirm('今のデータを、読み込んだファイルの内容に置きかえます。よろしいですか？')) return;
+      S = Object.assign(DEFAULT(), obj); save(); renderAll(); toast('データを読み込みました');
+    }catch(err){ toast('読み込めませんでした（形式が違うファイルです）'); }
+    e.target.value = '';
+  };
+  $('#wipe').onclick = () => {
+    if(!confirm('このブラウザに保存されているデータを、すべて消します。よろしいですか？')) return;
+    S = DEFAULT(); save(); qi = null; renderAll(); toast('すべて消しました');
+  };
+}
+
+/* ===================== タブ・時刻の更新 ===================== */
+let tab = 'home';
+function renderAll(){ renderHome(); renderCal(); renderTT(); }
+$$('#tabs button').forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  $$('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['home', 'cal', 'tt'].forEach(id => $('#' + id).hidden = id !== tab);
+  if(tab === 'home') renderHome(); else if(tab === 'cal') renderCal(); else renderTT();
+});
+renderAll();
+// 「今」「次」「空き枠」は時刻で変わるので、30秒ごとに描き直す（入力中は描き直さない）
+setInterval(() => {
+  const a = document.activeElement;
+  if(tab === 'home' && qi === null && !(a && $('#home').contains(a) && a.matches('input,textarea'))) renderHome();
+}, 30000);
+</script>
+</body>
+</html>
